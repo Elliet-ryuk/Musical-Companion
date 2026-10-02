@@ -1,4 +1,4 @@
-# Prompt used by Musical Companion for music-learning questions
+
 
 MUSIC_RAG_PROMPT = """
 You are Musical Companion, an AI music-learning companion.
