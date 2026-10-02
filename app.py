@@ -4,17 +4,10 @@ from src.graph import graph
 from data.music_data import CHORDS, SCALES
 
 
-# --------------------------------------------------
-# Conversation memory
-# --------------------------------------------------
-
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 
-# --------------------------------------------------
-# Page configuration
-# --------------------------------------------------
 
 st.set_page_config(
     page_title="Musical Companion",
@@ -23,9 +16,6 @@ st.set_page_config(
 )
 
 
-# --------------------------------------------------
-# Header
-# --------------------------------------------------
 
 st.title("🎵 Musical Companion")
 
@@ -35,9 +25,6 @@ st.caption(
 )
 
 
-# --------------------------------------------------
-# Sidebar
-# --------------------------------------------------
 
 st.sidebar.title("🎼 Learning Profile")
 
@@ -79,10 +66,6 @@ st.sidebar.write(
 )
 
 
-# --------------------------------------------------
-# Learn mode
-# --------------------------------------------------
-
 if mode == "🎓 Learn":
 
     st.header("🎓 Learn")
@@ -92,7 +75,7 @@ if mode == "🎓 Learn":
         "with explanations suited to your level."
     )
 
-    # Display previous conversation
+  
     for message in st.session_state.chat_history:
 
         if message.startswith("User: "):
@@ -113,13 +96,11 @@ if mode == "🎓 Learn":
 
     if question:
 
-        # Prepare previous conversation
+       
         history_text = "\n".join(
             st.session_state.chat_history
         )
 
-        # Send question + conversation history
-        # to LangGraph
         result = graph.invoke({
     "question": question,
     "context": "",
@@ -130,28 +111,28 @@ if mode == "🎓 Learn":
     "instrument": instrument,
     "level": level
 })
-        # Display user question
+    
         st.chat_message("user").write(question)
 
-        # Get AI answer
+     
         answer = result["answer"]
 
-        # Convert HTML line breaks to normal line breaks
+   
         answer = answer.replace("<br>", "\n")
         answer = answer.replace("<br/>", "\n")
         answer = answer.replace("<br />", "\n")
 
-        # Improve numbered-list formatting
+       
         answer = answer.replace(" 1. ", "\n1. ")
         answer = answer.replace(" 2. ", "\n2. ")
         answer = answer.replace(" 3. ", "\n3. ")
         answer = answer.replace(" 4. ", "\n4. ")
         answer = answer.replace(" 5. ", "\n5. ")
 
-        # Display AI answer
+    
         st.chat_message("assistant").markdown(answer)
 
-        # Save conversation
+   
         st.session_state.chat_history.append(
             f"User: {question}"
         )
@@ -161,9 +142,6 @@ if mode == "🎓 Learn":
         )
 
 
-# --------------------------------------------------
-# Explore mode
-# --------------------------------------------------
 
 elif mode == "🔎 Explore":
 
@@ -217,9 +195,6 @@ elif mode == "🔎 Explore":
         )
 
 
-# --------------------------------------------------
-# Practice mode
-# --------------------------------------------------
 
 elif mode == "🏋️ Practice":
 
@@ -255,12 +230,12 @@ elif mode == "🏋️ Practice":
 
         answer = result["answer"]
 
-        # Convert HTML line breaks to normal line breaks
+  
         answer = answer.replace("<br>", "\n")
         answer = answer.replace("<br/>", "\n")
         answer = answer.replace("<br />", "\n")
 
-        # Improve numbered-list formatting
+       
         answer = answer.replace(" 1. ", "\n1. ")
         answer = answer.replace(" 2. ", "\n2. ")
         answer = answer.replace(" 3. ", "\n3. ")
