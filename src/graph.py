@@ -6,11 +6,6 @@ from src.rag_pipeline import retriever, llm
 from src.prompts import MUSIC_RAG_PROMPT
 from data.music_data import CHORDS, SCALES
 
-
-# --------------------------------------------------
-# State
-# --------------------------------------------------
-
 class MusicState(TypedDict):
     question: str
     context: str
@@ -21,17 +16,9 @@ class MusicState(TypedDict):
     instrument: str
     level: str
 
-# --------------------------------------------------
-# Classify the user's request
-# --------------------------------------------------
-
 def classify_request(state: MusicState):
 
     question = state["question"].lower()
-
-    # --------------------------------------------------
-    # Guitar/instrument instructional questions
-    # --------------------------------------------------
 
     instructional_words = [
         "how to play",
@@ -62,9 +49,6 @@ def classify_request(state: MusicState):
             "route": "rag"
         }
 
-    # --------------------------------------------------
-    # Structured chord data
-    # --------------------------------------------------
 
     for chord in CHORDS:
 
@@ -74,9 +58,6 @@ def classify_request(state: MusicState):
                 "route": "music_data"
             }
 
-    # --------------------------------------------------
-    # Structured scale data
-    # --------------------------------------------------
 
     for scale in SCALES:
 
@@ -85,10 +66,6 @@ def classify_request(state: MusicState):
             return {
                 "route": "music_data"
             }
-
-    # --------------------------------------------------
-    # Practice questions
-    # --------------------------------------------------
 
     practice_words = [
         "practice",
@@ -103,10 +80,6 @@ def classify_request(state: MusicState):
         return {
             "route": "practice"
         }
-
-    # --------------------------------------------------
-    # Everything else → RAG
-    # --------------------------------------------------
 
     return {
         "route": "rag"
@@ -120,7 +93,7 @@ def classify_request(state: MusicState):
                 "route": "music_data"
             }
 
-    # Check practice-related questions
+
     practice_words = [
         "practice",
         "exercise",
@@ -140,17 +113,11 @@ def classify_request(state: MusicState):
     }
 
 
-# --------------------------------------------------
-# Rewrite the question for better retrieval
-# --------------------------------------------------
-
 def rewrite_search_query(state: MusicState):
 
     question = state["question"]
     chat_history = state["chat_history"]
 
-    # If there is no previous conversation,
-    # the original question is already sufficient.
     if not chat_history.strip():
 
         return {
@@ -189,9 +156,6 @@ Rewritten search query:
     }
 
 
-# --------------------------------------------------
-# Retrieve music knowledge
-# --------------------------------------------------
 
 def retrieve_knowledge(state: MusicState):
 
@@ -209,9 +173,6 @@ def retrieve_knowledge(state: MusicState):
     }
 
 
-# --------------------------------------------------
-# Generate RAG answer
-# --------------------------------------------------
 
 def generate_rag_answer(state: MusicState):
 
@@ -236,10 +197,6 @@ def generate_rag_answer(state: MusicState):
     }
 
 
-# --------------------------------------------------
-# Generate structured music-data answer
-# --------------------------------------------------
-
 def generate_music_data_answer(state: MusicState):
 
     question = state["question"].lower()
@@ -259,7 +216,6 @@ def generate_music_data_answer(state: MusicState):
                 "answer": answer
             }
 
-    # Search scales
     for scale_name, notes in SCALES.items():
 
         if scale_name.lower() in question:
@@ -277,10 +233,6 @@ def generate_music_data_answer(state: MusicState):
         "answer": "I couldn't find that item in the music database."
     }
 
-
-# --------------------------------------------------
-# Generate practice answer
-# --------------------------------------------------
 
 def generate_practice_answer(state: MusicState):
 
@@ -372,10 +324,6 @@ Do not use HTML tags.
     }
 
 
-# --------------------------------------------------
-# Decide which route to follow
-# --------------------------------------------------
-
 def route_request(state: MusicState):
 
     if state["route"] == "music_data":
@@ -388,10 +336,6 @@ def route_request(state: MusicState):
 
     return "rewrite"
 
-
-# --------------------------------------------------
-# Build LangGraph
-# --------------------------------------------------
 
 graph_builder = StateGraph(MusicState)
 
@@ -426,11 +370,6 @@ graph_builder.add_node(
     "practice",
     generate_practice_answer
 )
-
-
-# --------------------------------------------------
-# Graph connections
-# --------------------------------------------------
 
 graph_builder.add_edge(
     START,
@@ -478,9 +417,5 @@ graph_builder.add_edge(
     END
 )
 
-
-# --------------------------------------------------
-# Compile graph
-# --------------------------------------------------
 
 graph = graph_builder.compile()
