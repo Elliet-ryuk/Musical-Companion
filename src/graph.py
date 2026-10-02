@@ -6,6 +6,7 @@ from src.rag_pipeline import retriever, llm
 from src.prompts import MUSIC_RAG_PROMPT
 from data.music_data import CHORDS, SCALES
 
+
 class MusicState(TypedDict):
     question: str
     context: str
@@ -18,7 +19,26 @@ class MusicState(TypedDict):
 
 def classify_request(state: MusicState):
 
-    question = state["question"].lower()
+    question = state["question"].lower().strip()
+
+    explanation_words = [
+        "what is",
+        "what are",
+        "what's",
+        "why",
+        "explain",
+        "difference",
+        "different",
+        "compare",
+        "comparison",
+        "meaning",
+        "understand",
+        "tell me about",
+        "describe",
+        "how does",
+        "how do",
+    ]
+
 
     instructional_words = [
         "how to play",
@@ -30,7 +50,7 @@ def classify_request(state: MusicState):
         "chord shape",
         "shape",
         "barre",
-        "bar",
+        "bar chord",
         "fret",
         "frets",
         "fifth fret",
@@ -40,83 +60,62 @@ def classify_request(state: MusicState):
         "first fret",
         "strumming",
         "hand position",
-        "position on guitar"
+        "position on guitar",
+        "how should i play",
     ]
 
-    if any(word in question for word in instructional_words):
+    # Explanation questions → RAG
+    if any(word in question for word in explanation_words):
+        return {"route": "rag"}
 
-        return {
-            "route": "rag"
-        }
+    # Instructional questions → RAG
+    if any(word in question for word in instructional_words):
+        return {"route": "rag"}
+
+
+    practice_words = [
+        "practice",
+        "exercise",
+        "routine",
+        "workout",
+        "improve",
+        "training",
+        "train",
+    ]
+
+    if any(word in question for word in practice_words):
+        return {"route": "practice"}
 
 
     for chord in CHORDS:
-
         if chord.lower() in question:
-
-            return {
-                "route": "music_data"
-            }
-
+            return {"route": "music_data"}
 
     for scale in SCALES:
-
         if scale.lower() in question:
-
-            return {
-                "route": "music_data"
-            }
-
-    practice_words = [
-        "practice",
-        "exercise",
-        "routine",
-        "workout",
-        "improve"
-    ]
-
-    if any(word in question for word in practice_words):
-
-        return {
-            "route": "practice"
-        }
-
-    return {
-        "route": "rag"
-    }
-
-    # Check structured scale data
-    for scale in SCALES:
-
-        if scale.lower() in question:
-            return {
-                "route": "music_data"
-            }
+            return {"route": "music_data"}
 
 
-    practice_words = [
-        "practice",
-        "exercise",
-        "routine",
-        "workout",
-        "improve"
-    ]
+    return {"route": "rag"}
 
-    if any(word in question for word in practice_words):
 
-        return {
-            "route": "practice"
-        }
+def route_request(state: MusicState):
 
-    return {
-        "route": "rag"
-    }
+    if state["route"] == "music_data":
+        return "music_data"
+
+    if state["route"] == "practice":
+        return "practice"
+
+    return "rewrite"
+
 
 
 def rewrite_search_query(state: MusicState):
 
     question = state["question"]
     chat_history = state["chat_history"]
+
 
     if not chat_history.strip():
 
@@ -132,7 +131,14 @@ Rewrite the user's latest question into a clear,
 self-contained search query.
 
 Use the conversation history to understand words such as:
-"it", "its", "this", "that", or "the previous one".
+
+- it
+- its
+- this
+- that
+- the previous one
+- the above chord
+- the above scale
 
 Do not answer the question.
 
@@ -156,7 +162,6 @@ Rewritten search query:
     }
 
 
-
 def retrieve_knowledge(state: MusicState):
 
     search_query = state["search_query"]
@@ -171,6 +176,7 @@ def retrieve_knowledge(state: MusicState):
     return {
         "context": context
     }
+
 
 
 
@@ -190,18 +196,13 @@ def generate_rag_answer(state: MusicState):
         "answer": response.content
     }
 
-    response = llm.invoke(prompt)
-
-    return {
-        "answer": response.content
-    }
-
 
 def generate_music_data_answer(state: MusicState):
 
     question = state["question"].lower()
 
-    # Search chords
+
+
     for chord_name, chord_data in CHORDS.items():
 
         if chord_name.lower() in question:
@@ -215,6 +216,7 @@ def generate_music_data_answer(state: MusicState):
             return {
                 "answer": answer
             }
+
 
     for scale_name, notes in SCALES.items():
 
@@ -232,6 +234,7 @@ def generate_music_data_answer(state: MusicState):
     return {
         "answer": "I couldn't find that item in the music database."
     }
+
 
 
 def generate_practice_answer(state: MusicState):
@@ -254,40 +257,65 @@ User question:
 Create a practice routine that matches the learner's
 instrument and skill level.
 
-Level guidelines:
+LEVEL GUIDELINES:
 
-- Beginner:
-  Focus on fundamentals, simple exercises, slower practice,
-  and clear step-by-step instructions.
+Beginner:
+- Focus on fundamentals.
+- Use simple exercises.
+- Use slower practice.
+- Give clear step-by-step instructions.
+- Avoid unnecessary technical complexity.
 
-- Intermediate:
-  Include more challenging exercises, technique development,
-  musical application, and moderate practice complexity.
+Intermediate:
+- Include more challenging exercises.
+- Include technique development.
+- Include musical application.
+- Use moderate practice complexity.
 
-- Advanced:
-  Do not give a beginner routine.
-  Include technically demanding exercises, deeper musical
-  concepts, structured progression, and performance-oriented
-  practice where appropriate.
+Advanced:
+- Do not give a beginner routine.
+- Include technically demanding exercises.
+- Include deeper musical concepts.
+- Include structured progression.
+- Include performance-oriented practice where appropriate.
 
-Instrument guidelines:
+INSTRUMENT GUIDELINES:
 
-- For Guitar, include guitar-specific techniques,
-  fretboard work, chord changes, scales, picking,
-  rhythm, or other relevant guitar skills when appropriate.
+Guitar:
+- Chord changes
+- Fretboard work
+- Scales
+- Picking
+- Rhythm
+- Strumming
+- Technique
 
-- For Piano, include piano-specific techniques,
-  scales, arpeggios, chord voicings, coordination,
-  rhythm, or other relevant piano skills when appropriate.
+Piano:
+- Scales
+- Arpeggios
+- Chord voicings
+- Hand coordination
+- Rhythm
+- Technique
 
-- For Music Theory, focus on theoretical analysis,
-  ear training, harmony, composition, or related exercises.
+Music Theory:
+- Ear training
+- Harmony
+- Chord analysis
+- Scale analysis
+- Composition
+- Musical analysis
 
 Make the routine practical and specific.
 
 Use numbered steps.
+
 Put each numbered item on its own line.
+
 Do not use HTML tags.
+
+Do not use <br>.
+
 """
 
     response = llm.invoke(prompt)
@@ -295,52 +323,12 @@ Do not use HTML tags.
     return {
         "answer": response.content
     }
-
-    prompt = f"""
-You are Musical Companion, an AI music practice assistant.
-
-The user wants help with practice.
-
-User question:
-{state["question"]}
-
-Conversation history:
-{state["chat_history"]}
-
-Give a simple and useful practice suggestion.
-
-Keep it suitable for a beginner unless the question
-clearly indicates another level.
-
-Use numbered steps when appropriate.
-Put each numbered item on its own line.
-Do not use HTML tags.
-"""
-
-    response = llm.invoke(prompt)
-
-    return {
-        "answer": response.content
-    }
-
-
-def route_request(state: MusicState):
-
-    if state["route"] == "music_data":
-
-        return "music_data"
-
-    if state["route"] == "practice":
-
-        return "practice"
-
-    return "rewrite"
 
 
 graph_builder = StateGraph(MusicState)
 
 
-# Nodes
+# Add nodes
 graph_builder.add_node(
     "classify",
     classify_request
@@ -371,11 +359,12 @@ graph_builder.add_node(
     generate_practice_answer
 )
 
+
+
 graph_builder.add_edge(
     START,
     "classify"
 )
-
 
 graph_builder.add_conditional_edges(
     "classify",
@@ -387,18 +376,15 @@ graph_builder.add_conditional_edges(
     }
 )
 
-
 graph_builder.add_edge(
     "rewrite",
     "retrieve"
 )
 
-
 graph_builder.add_edge(
     "retrieve",
     "rag_answer"
 )
-
 
 graph_builder.add_edge(
     "rag_answer",
@@ -416,6 +402,7 @@ graph_builder.add_edge(
     "practice",
     END
 )
+
 
 
 graph = graph_builder.compile()
